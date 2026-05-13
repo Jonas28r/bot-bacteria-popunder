@@ -1,0 +1,16 @@
+{
+  "name": "nogle-bacteria-popunder",
+  "version": "1.0.0",
+  "description": "Bot de esteganografía para inyección de scripts Adsterra en WebP",
+  "main": "encode-popunder.js",
+  "scripts": {
+    "start": "node encode-popunder.js"
+  },
+  "dependencies": {
+    "sharp": "^0.33.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+
